@@ -43,10 +43,16 @@ export interface IStockMovement extends Document {
   createdAt: Date;
     updatedAt: Date;
 }
-
+export interface AuthRequest extends Request {
+  user?: {
+    userId: string;
+    role: string;
+  };
+}
 export interface AuthRequestDto{
     email: string;
     password: string;
+    
 }
 
 export interface ProductRequestDto {
