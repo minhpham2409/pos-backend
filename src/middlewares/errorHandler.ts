@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import {appLogger} from '../utils/logger';
 import { STATUS_CODES, MESSAGES } from '../utils/constants';
-
+import { AuthRequest } from '../types';
 
 // Middleware xử lý lỗi
-const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+const errorHandler = (err: any, req: AuthRequest, res: Response, next: NextFunction) => {
   // Ghi log lỗi
   appLogger.error('Server error', {
     error: err.message,

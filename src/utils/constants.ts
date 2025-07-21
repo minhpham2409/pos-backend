@@ -3,6 +3,7 @@ export const ROLES = {
   CASHIER: 'cashier',
 } as const;
 
+export type Role = 'admin' | 'cashier';
 export const STOCK_TYPES = {
   IMPORT: 'import',
   EXPORT: 'export',
@@ -26,4 +27,5 @@ export const MESSAGES = {
   ORDER_CREATED: 'Order created successfully',
   STOCK_UPDATED: 'Stock updated successfully',
   INVALID_STOCK: 'Insufficient stock',
+   SERVER_ERROR: 'Internal server error', 
 } as const;
