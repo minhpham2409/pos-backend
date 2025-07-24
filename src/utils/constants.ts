@@ -17,6 +17,7 @@ export const STATUS_CODES = {
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   SERVER_ERROR: 500,
+  CONFLICT: 409,
 } as const;
 
 export const MESSAGES = {
@@ -28,4 +29,10 @@ export const MESSAGES = {
   STOCK_UPDATED: 'Stock updated successfully',
   INVALID_STOCK: 'Insufficient stock',
    SERVER_ERROR: 'Internal server error', 
+   USER_EXISTS: 'User already exists',
+   LOGOUT_SUCCESS: 'Logout successful',
+   CONFLICT: 'Conflict error',
+   NOT_FOUND: 'Resource not found',
+   REGISTER_SUCCESS: 'Registration successful',
+
 } as const;

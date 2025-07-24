@@ -1,6 +1,7 @@
-import { Document } from "mongoose";
+import { Document,Types  } from "mongoose";
 import { Request } from "express";
 export interface IUser extends Document{
+    _id: Types.ObjectId;
     username : string;
     passwordHash : string;
     email : string;
@@ -10,6 +11,7 @@ export interface IUser extends Document{
 }
 
 export interface IProduct extends Document {
+    _id: Types.ObjectId;
     name: string;
     sku: string;
     price: number;
@@ -28,6 +30,7 @@ export interface IOrderItem extends Document {
 }
 
 export interface IOrder extends Document {
+    _id: Types.ObjectId;
     items : IOrderItem[];
     total : number;
     createdBy: string; 
@@ -35,6 +38,7 @@ export interface IOrder extends Document {
 }
 
 export interface IStockMovement extends Document {
+    _id: Types.ObjectId;
   type: "import" | "export";
   productId: string;
   qty: number;

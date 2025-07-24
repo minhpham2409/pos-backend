@@ -25,6 +25,15 @@ export const validateLogin = [
   handleValidationErrors,
 ];
 
+// Validation cho POST /register
+export const validateRegister = [
+  body('email').isEmail().withMessage('Email must be valid'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  body('username').notEmpty().withMessage('Username is required'),
+  body('role').optional().isIn(['admin', 'user']).withMessage('Role must be either admin or user'),
+  handleValidationErrors,
+];
+
 // Validation cho POST /products
 export const validateProduct = [
   body('name').notEmpty().withMessage('Product name is required'),

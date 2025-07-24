@@ -1,17 +1,47 @@
-import app from "./app";
-import { connectDatabase } from "./config/database";
+import dotenv from 'dotenv';
+import { config } from './config/environment';
+import { connectDatabase, disconnectDatabase } from './config/database';
+import { appLogger } from './utils/logger';
+import app from './app';
 
-async function startServer() {
+dotenv.config();
+
+const startServer = async () => {
   try {
-    connectDatabase()
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    // Kết nối MongoDB sử dụng database.ts
+    await connectDatabase({ autoIndex: config.nodeEnv !== 'production' });
+    appLogger.info('Server connected to MongoDB', { uri: config.mongodbUri });
+
+    // Khởi động server Express
+    const server = app.listen(config.port, () => {
+      appLogger.info(`Server running on port ${config.port}`, { env: config.nodeEnv });
+    });
+
+    // Xử lý lỗi server
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      appLogger.error('Server error', { error: error.message });
+      process.exit(1);
     });
   } catch (error) {
-    console.error("Server startup error:", error);
+    appLogger.error('Failed to start server', { error: (error as Error).message });
     process.exit(1);
   }
-}
+};
+
+// Xử lý khi process bị tắt (graceful shutdown)
+process.on('SIGTERM', async () => {
+  appLogger.info('SIGTERM received. Shutting down gracefully...');
+  await disconnectDatabase();
+  appLogger.info('MongoDB connection closed');
+  process.exit(0);
+});
+
+// Xử lý khi Ctrl+C
+process.on('SIGINT', async () => {
+  appLogger.info('SIGINT received. Shutting down gracefully...');
+  await disconnectDatabase();
+  appLogger.info('MongoDB connection closed');
+  process.exit(0);
+});
 
 startServer();
