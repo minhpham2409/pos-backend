@@ -11,4 +11,6 @@ router.post('/register', validateRegister, register);
 
 router.post('/logout', authMiddleware, logout);
 
+
+
 export const authRouter = router;

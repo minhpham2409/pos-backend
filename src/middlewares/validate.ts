@@ -44,6 +44,17 @@ export const validateProduct = [
   handleValidationErrors,
 ];
 
+// Validation cho PUT /products/:id
+export const validateUpdateProduct = [
+  body('name').optional().notEmpty().withMessage('Product name is required if provided'),
+  body('sku').optional().notEmpty().withMessage('SKU is required if provided'),
+  body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a non-negative number if provided'),
+  body('stock').optional().isInt({ min: 0 }).withMessage('Stock must be a non-negative integer if provided'),
+  body('unit').optional().notEmpty().withMessage('Unit is required if provided'),
+  body('description').optional().isString().withMessage('Description must be a string if provided'),
+  handleValidationErrors,
+];
+
 // Validation cho POST /orders
 export const validateOrder = [
   body('items').isArray({ min: 1 }).withMessage('Items must be a non-empty array'),

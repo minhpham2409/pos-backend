@@ -34,5 +34,6 @@ export const MESSAGES = {
    CONFLICT: 'Conflict error',
    NOT_FOUND: 'Resource not found',
    REGISTER_SUCCESS: 'Registration successful',
+   ORDER_NOT_FOUND: 'Order not found',
 
 } as const;

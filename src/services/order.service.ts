@@ -1,162 +1,138 @@
-// import mongoose, { ClientSession } from 'mongoose';
-// import  Order  from '../models/Order';
-// import  Product  from '../models/Product';
-// import  StockMovement  from '../models/StockMovement';
-// import { appLogger } from '../utils/logger';
-// import { STATUS_CODES, MESSAGES } from '../utils/constants';
-// import { OrderRequestDto, IOrder, IOrderItem } from '../types';
-// import { withTransaction } from '../utils/database';
+import  Product  from '../models/Product';
+import  Order  from '../models/Order';
+import  StockMovement  from '../models/StockMovement';
+import { appLogger } from '../utils/logger';
+import { STATUS_CODES, MESSAGES } from '../utils/constants';
+import { OrderRequestDto } from '../types';
 
-// export class OrderService {
-//   /**
-//    * Creates a new order, validates stock, updates product stock, and logs stock movement.
-//    * @param orderData - The order data including items.
-//    * @param userId - The ID of the user creating the order.
-//    * @returns The created order.
-//    */
-//   static async createOrder(orderData: OrderRequestDto, userId: string): Promise<IOrder> {
-//     return withTransaction(async (session: ClientSession) => {
-//       try {
-//         const { items } = orderData;
+/**
+ * Tạo đơn hàng mới
+ * @param orderData - Dữ liệu đơn hàng (items)
+ * @param userId - ID của user tạo đơn hàng
+ * @returns Đơn hàng vừa tạo
+ */
+export async function createOrder(orderData: OrderRequestDto, userId: string) {
+  const { items } = orderData;
 
-//         // Validate and fetch products
-//         const productIds = items.map(item => item.productId);
-//         const products = await Product.find({ _id: { $in: productIds } }).session(session);
+  // Kiểm tra sản phẩm tồn tại và đủ stock
+  const productIds = items.map(item => item.productId);
+  const products = await Product.find({ _id: { $in: productIds } });
 
-//         if (products.length !== items.length) {
-//           appLogger.warn('Some products not found', { productIds });
-//           const error = new Error(MESSAGES.PRODUCT_NOT_FOUND);
-//           error.name = 'NotFoundError';
-//           (error as any).statusCode = STATUS_CODES.NOT_FOUND;
-//           throw error;
-//         }
+  if (products.length !== items.length) {
+    appLogger.warn('One or more products not found', { productIds, userId });
+    const error = new Error(MESSAGES.PRODUCT_NOT_FOUND);
+    error.name = 'NotFoundError';
+    (error as any).statusCode = STATUS_CODES.NOT_FOUND;
+    throw error;
+  }
 
-//         // Validate stock availability
-//         for (const item of items) {
-//           const product = products.find(p => p._id.toString() === item.productId);
-//           if (!product) {
-//             appLogger.warn('Product not found', { productId: item.productId });
-//             const error = new Error(MESSAGES.PRODUCT_NOT_FOUND);
-//             error.name = 'NotFoundError';
-//             (error as any).statusCode = STATUS_CODES.NOT_FOUND;
-//             throw error;
-//           }
-//           if (product.stock < item.qty) {
-//             appLogger.warn('Insufficient stock', { productId: item.productId, stock: product.stock, requested: item.qty });
-//             const error = new Error(MESSAGES.INVALID_STOCK);
-//             error.name = 'InvalidStockError';
-//             (error as any).statusCode = STATUS_CODES.BAD_REQUEST;
-//             throw error;
-//           }
-//         }
+  // Kiểm tra stock và tính tổng tiền
+  let total = 0;
+  for (const item of items) {
+    const product = products.find(p => p._id.toString() === item.productId);
+    if (!product) {
+      appLogger.warn('Product not found for item', { productId: item.productId, userId });
+      const error = new Error(MESSAGES.PRODUCT_NOT_FOUND);
+      error.name = 'NotFoundError';
+      (error as any).statusCode = STATUS_CODES.NOT_FOUND;
+      throw error;
+    }
+    if (product.stock < item.qty) {
+      appLogger.warn('Insufficient stock for product', {
+        productId: item.productId,
+        stock: product.stock,
+        requestedQty: item.qty,
+        userId,
+      });
+      const error = new Error('Insufficient stock');
+      error.name = 'BadRequestError';
+      (error as any).statusCode = STATUS_CODES.BAD_REQUEST;
+      throw error;
+    }
+    total += item.qty * product.price;
+    item.name = product.name; // Lưu tên sản phẩm vào đơn hàng
+    item.price = product.price; // Lưu giá sản phẩm vào đơn hàng
+  }
 
-//         // Prepare order items with product details
-//         const orderItems: IOrderItem[] = items.map(item => {
-//           const product = products.find(p => p._id.toString() === item.productId)!;
-//           return {
-//             productId: item.productId,
-//             name: product.name,
-//             qty: item.qty,
-//             price: product.price,
-//           };
-//         });
+  // Tạo đơn hàng
+  const order = new Order({
+    items,
+    total,
+    createdBy: userId,
+    createdAt: new Date(),
+  });
 
-//         // Calculate total
-//         const total = orderItems.reduce((sum, item) => sum + item.price * item.qty, 0);
+  // Tạo StockMovement và cập nhật stock
+  const stockMovements = items.map(item => {
+    const product = products.find(p => p._id.toString() === item.productId)!;
+    product.stock -= item.qty; // Giảm stock
+    return new StockMovement({
+      type: 'export',
+      productId: item.productId,
+      qty: item.qty,
+      note: `Order ${order._id}`,
+      createdBy: userId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  });
 
-//         // Create order
-//         const order = new Order({
-//           items: orderItems,
-//           total,
-//           createdBy: userId,
-//         });
+  // Lưu đồng thời order, products, và stock movements
+  await Promise.all([
+    order.save(),
+    ...products.map(p => p.save()),
+    ...stockMovements.map(sm => sm.save()),
+  ]);
 
-//         // Update product stock and create stock movements
-//         for (const item of orderItems) {
-//           const product = products.find(p => p._id.toString() === item.productId)!;
-//           product.stock -= item.qty;
-//           await product.save({ session });
+  appLogger.info('Order created successfully', { orderId: order._id, userId });
+  return order;
+}
 
-//           const stockMovement = new StockMovement({
-//             type: 'export',
-//             productId: item.productId,
-//             qty: item.qty,
-//             note: `Order ${order._id}`,
-//             createdBy: userId,
-//           });
-//           await stockMovement.save({ session });
-//         }
+/**
+ * Lấy danh sách đơn hàng với phân trang và lọc
+ * @param page - Trang hiện tại
+ * @param limit - Số lượng mỗi trang
+ * @param userId - Lọc theo user tạo đơn hàng (tùy chọn)
+ * @returns Danh sách đơn hàng
+ */
+export async function getOrders(page: number = 1, limit: number = 10, userId?: string) {
+  const query: any = {};
+  if (userId) {
+    query.createdBy = userId;
+  }
 
-//         // Save order
-//         await order.save({ session });
+  const skip = (page - 1) * limit;
+  const [orders, total] = await Promise.all([
+    Order.find(query).skip(skip).limit(limit).lean(),
+    Order.countDocuments(query),
+  ]);
 
-//         appLogger.info('Order created successfully', { orderId: order._id, userId });
-//         return order;
-//       } catch (error) {
-//         appLogger.error('Failed to create order', { error: (error as Error).message, userId });
-//         throw error;
-//       }
-//     });
-//   }
+  appLogger.info('Orders retrieved successfully', { page, limit, total, userId });
+  return { orders, total, page, limit };
+}
 
-//   /**
-//    * Retrieves a paginated list of orders with optional filtering.
-//    * @param page - The page number.
-//    * @param limit - Number of orders per page.
-//    * @param startDate - Optional start date filter.
-//    * @param endDate - Optional end date filter.
-//    * @returns Paginated list of orders.
-//    */
-//   static async getOrders(page: number = 1, limit: number = 10, startDate?: Date, endDate?: Date): Promise<{
-//     orders: IOrder[];
-//     total: number;
-//     page: number;
-//     limit: number;
-//   }> {
-//     try {
-//       const query: any = {};
-//       if (startDate && endDate) {
-//         query.createdAt = { $gte: startDate, $lte: endDate };
-//       }
 
-//       const skip = (page - 1) * limit;
-//       const [orders, total] = await Promise.all([
-//         Order.find(query).skip(skip).limit(limit).lean(),
-//         Order.countDocuments(query),
-//       ]);
+/**
+ * Lấy chi tiết đơn hàng theo ID
+ * @param orderId - ID của đơn hàng
+ * @param userId - ID của user yêu cầu (để kiểm tra quyền)
+ * @returns Đơn hàng
+ */
+export async function getOrderById(orderId: string, userId: string, role: string) {
+  const query: any = { _id: orderId };
+  if (role !== 'admin') {
+    query.createdBy = userId; // Cashier chỉ thấy đơn của mình
+  }
 
-//       appLogger.info('Orders retrieved successfully', { page, limit, total });
-//       return { orders, total, page, limit };
-//     } catch (error) {
-//       appLogger.error('Failed to retrieve orders', { error: (error as Error).message });
-//       const err = new Error(MESSAGES.SERVER_ERROR);
-//       err.name = 'ServerError';
-//       (err as any).statusCode = STATUS_CODES.SERVER_ERROR;
-//       throw err;
-//     }
-//   }
+  const order = await Order.findOne(query).lean();
+  if (!order) {
+    appLogger.warn('Order not found', { orderId, userId });
+    const error = new Error(MESSAGES.ORDER_NOT_FOUND);
+    error.name = 'NotFoundError';
+    (error as any).statusCode = STATUS_CODES.NOT_FOUND;
+    throw error;
+  }
 
-//   /**
-//    * Retrieves details of a specific order by ID.
-//    * @param orderId - The ID of the order.
-//    * @returns The order details.
-//    */
-//   static async getOrderById(orderId: string): Promise<IOrder> {
-//     try {
-//       const order = await Order.findById(orderId).lean();
-//       if (!order) {
-//         appLogger.warn('Order not found', { orderId });
-//         const error = new Error(MESSAGES.NOT_FOUND);
-//         error.name = 'NotFoundError';
-//         (error as any).statusCode = STATUS_CODES.NOT_FOUND;
-//         throw error;
-//       }
-
-//       appLogger.info('Order retrieved successfully', { orderId });
-//       return order;
-//     } catch (error) {
-//       appLogger.error('Failed to retrieve order', { error: (error as Error).message, orderId });
-//       throw error;
-//     }
-//   }
-// }
+  appLogger.info('Order retrieved successfully', { orderId, userId });
+  return order;
+}

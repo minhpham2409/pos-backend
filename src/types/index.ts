@@ -65,6 +65,7 @@ export interface ProductRequestDto {
     price : number;
     stock : number;
     unit : string;
+    description?: string;
 }
 export interface OrderRequestDto {
     items: IOrderItem[];
