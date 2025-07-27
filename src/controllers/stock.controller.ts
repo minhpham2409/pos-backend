@@ -4,12 +4,6 @@ import { appLogger } from '../utils/logger';
 import { STATUS_CODES } from '../utils/constants';
 import { AuthRequest } from '../types';
 
-/**
- * Xử lý yêu cầu nhập kho sản phẩm (admin only)
- * @param req - Request chứa dữ liệu nhập kho
- * @param res - Response trả về lịch sử nhập kho
- * @param next - Chuyển lỗi đến middleware errorHandler
- */
 export async function importStockController(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const stockData = req.body;
@@ -28,12 +22,6 @@ export async function importStockController(req: AuthRequest, res: Response, nex
   }
 }
 
-/**
- * Xử lý yêu cầu xuất kho sản phẩm (admin only)
- * @param req - Request chứa dữ liệu xuất kho
- * @param res - Response trả về lịch sử xuất kho
- * @param next - Chuyển lỗi đến middleware errorHandler
- */
 export async function exportStockController(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const stockData = req.body;
@@ -51,20 +39,20 @@ export async function exportStockController(req: AuthRequest, res: Response, nex
     next(error);
   }
 }
-
-/**
- * Xử lý yêu cầu lấy danh sách lịch sử nhập/xuất kho
- * @param req - Request chứa query params (page, limit, productId, type)
- * @param res - Response trả về danh sách lịch sử
- * @param next - Chuyển lỗi đến middleware errorHandler
- */
 export async function getStockMovementsController(req: Request, res: Response, next: NextFunction) {
   try {
-    const { page = '1', limit = '10', productId, type } = req.query;
+    const { page = '1', limit = '10', productId, type, createdAt } = req.query;
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
+    const createdAtDate = createdAt ? new Date(createdAt as string) : undefined;
 
-    const result = await getStockMovements(pageNum, limitNum, productId as string, type as 'import' | 'export');
+    const result = await getStockMovements(
+      pageNum,
+      limitNum,
+      productId as string,
+      type as 'import' | 'export',
+      createdAtDate
+    );
 
     res.status(STATUS_CODES.OK).json({
       success: true,

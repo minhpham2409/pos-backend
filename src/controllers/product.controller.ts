@@ -3,13 +3,7 @@ import  Product  from '../models/Product';
 import { appLogger } from '../utils/logger';
 import { STATUS_CODES, MESSAGES } from '../utils/constants';
 import { AuthRequest, ProductRequestDto } from '../types';
-
-/**
- * Lấy danh sách sản phẩm với phân trang và lọc
- * @param req - Request chứa query params (page, limit, search)
- * @param res - Response trả về danh sách sản phẩm
- * @param next - Chuyển lỗi đến middleware errorHandler
- */export async function getProducts(req: Request, res: Response, next: NextFunction) {
+export async function getProducts(req: Request, res: Response, next: NextFunction) {
   try {
     const { page = '1', limit = '10', name, sku } = req.query;
     const pageNum = parseInt(page as string);
@@ -40,12 +34,6 @@ import { AuthRequest, ProductRequestDto } from '../types';
   }
 }
 
-/**
- * Thêm sản phẩm mới (admin only)
- * @param req - Request chứa dữ liệu sản phẩm
- * @param res - Response trả về sản phẩm vừa tạo
- * @param next - Chuyển lỗi đến middleware errorHandler
- */
 export async function createProduct(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const productData: ProductRequestDto = req.body;
@@ -87,12 +75,6 @@ export async function createProduct(req: AuthRequest, res: Response, next: NextF
   }
 }
 
-/**
- * Cập nhật sản phẩm (admin only)
- * @param req - Request chứa ID sản phẩm và dữ liệu cập nhật
- * @param res - Response trả về sản phẩm đã cập nhật
- * @param next - Chuyển lỗi đến middleware errorHandler
- */
 export async function updateProduct(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const id = req.params.id;
@@ -135,12 +117,6 @@ export async function updateProduct(req: AuthRequest, res: Response, next: NextF
   }
 }
 
-/**
- * Xóa sản phẩm (admin only)
- * @param req - Request chứa ID sản phẩm
- * @param res - Response trả về thông báo xóa thành công
- * @param next - Chuyển lỗi đến middleware errorHandler
- */
 export async function deleteProduct(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const id = req.params.id;

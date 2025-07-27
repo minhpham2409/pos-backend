@@ -1,26 +1,53 @@
 import { Request, Response, NextFunction } from 'express';
-import { login as loginService, register as registerService, logout as logoutService } from '../services/auth.service';
+import { login as loginService, register as registerService, logout as logoutService , getAllUsers as getAllUsersService} from '../services/auth.service';
 import { appLogger } from '../utils/logger';
 import { STATUS_CODES, MESSAGES } from '../utils/constants';
 import { AuthRequest, AuthRequestDto } from '../types';
+
+export const getProfile = async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    appLogger.warn('User not authenticated');
+    return res.status(STATUS_CODES.UNAUTHORIZED).json({ message: MESSAGES.UNAUTHORIZED });
+  }
+  appLogger.info('User profile retrieved', { userId: req.user.userId });
+  res.status(STATUS_CODES.OK).json({
+    success: true,
+    data: { user: req.user },
+    
+  });
+};
+
+export const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const users = await getAllUsersService();
+    appLogger.info('All users retrieved successfully', { count: users.length });
+    res.status(STATUS_CODES.OK).json({
+      success: true,
+      data: { users }
+    });
+  } catch (error) {
+    appLogger.error('Failed to retrieve users', { error: (error as Error).message });
+    next(error);
+  }
+};
 
 export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authData: AuthRequestDto = req.body;
     const result = await loginService(authData);
 
-    // Lưu token vào cookie
+    
     res.cookie('jwt', result.token, {
-      httpOnly: true, // Ngăn JavaScript truy cập cookie
-      secure: process.env.NODE_ENV === 'production', // Chỉ gửi cookie qua HTTPS trong production
-      sameSite: 'strict', // Ngăn CSRF
-      maxAge: 60 * 60 * 1000, // Hết hạn sau 1 giờ (phù hợp với expiresIn: '1h')
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production', 
+      sameSite: 'strict', 
+      maxAge: 60 * 60 * 1000, 
     });
 
     appLogger.info('Login request processed successfully', { userId: result.user.id });
     res.status(STATUS_CODES.OK).json({
       success: true,
-      data: { user: result.user }, // Không trả token trong body, chỉ lưu trong cookie
+      data: { user: result.user }, 
       message: MESSAGES.LOGIN_SUCCESS,
     });
   } catch (error) {

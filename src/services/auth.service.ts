@@ -92,6 +92,12 @@ export const logout = async (token: string, userId: string) => {
   }
 };
 
+export const getAllUsers = async () => {
+  const users = await User.find().select('-passwordHash').lean();
+  appLogger.info('Retrieved all users', { count: users.length });
+  return users;
+};
+
 export const isTokenBlacklisted = (token: string): boolean => {
   return tokenBlacklist.has(token);
 };

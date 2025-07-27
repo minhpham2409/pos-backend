@@ -5,12 +5,6 @@ import { appLogger } from '../utils/logger';
 import { STATUS_CODES, MESSAGES } from '../utils/constants';
 import { OrderRequestDto } from '../types';
 
-/**
- * Tạo đơn hàng mới
- * @param orderData - Dữ liệu đơn hàng (items)
- * @param userId - ID của user tạo đơn hàng
- * @returns Đơn hàng vừa tạo
- */
 export async function createOrder(orderData: OrderRequestDto, userId: string) {
   const { items } = orderData;
 
@@ -88,13 +82,6 @@ export async function createOrder(orderData: OrderRequestDto, userId: string) {
   return order;
 }
 
-/**
- * Lấy danh sách đơn hàng với phân trang và lọc
- * @param page - Trang hiện tại
- * @param limit - Số lượng mỗi trang
- * @param userId - Lọc theo user tạo đơn hàng (tùy chọn)
- * @returns Danh sách đơn hàng
- */
 export async function getOrders(page: number = 1, limit: number = 10, userId?: string) {
   const query: any = {};
   if (userId) {
@@ -112,12 +99,6 @@ export async function getOrders(page: number = 1, limit: number = 10, userId?: s
 }
 
 
-/**
- * Lấy chi tiết đơn hàng theo ID
- * @param orderId - ID của đơn hàng
- * @param userId - ID của user yêu cầu (để kiểm tra quyền)
- * @returns Đơn hàng
- */
 export async function getOrderById(orderId: string, userId: string, role: string) {
   const query: any = { _id: orderId };
   if (role !== 'admin') {

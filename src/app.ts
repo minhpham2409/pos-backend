@@ -12,26 +12,26 @@ import { appLogger } from './utils/logger';
 
 const app = express();
 
-// Middleware
-app.use(helmet()); // Bảo mật header HTTP
-app.use(cors({ credentials: true, origin: 'http://localhost:3000' })); // Cho phép cookie cross-origin
-app.use(cookieParser()); // Parse cookie
+
+app.use(helmet()); 
+app.use(cors({ credentials: true, origin: 'http://localhost:3000' })); 
+app.use(cookieParser());
 app.use(
   morgan('dev', {
     stream: {
       write: (message: string) => appLogger.info(message.trim()),
     },
   })
-); // Ghi log HTTP
-app.use(express.json()); // Parse JSON body
+); 
+app.use(express.json()); 
 
-// Routes
-app.use('/api/auth', authRouter); // Route xác thực
-app.use('/api/products',productRouter); // Route sản phẩm
-app.use('/api/stock', stockRouter); // Route quản lý kho
-app.use('/api/orders', orderRouter); // Route quản lý đơn hàng
 
-// Error Handler
+app.use('/api/auth', authRouter); 
+app.use('/api/products',productRouter); 
+app.use('/api/stock', stockRouter); 
+app.use('/api/orders', orderRouter); 
+
+
 app.use(errorHandler);
 
 export default app;

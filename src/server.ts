@@ -8,16 +8,16 @@ dotenv.config();
 
 const startServer = async () => {
   try {
-    // Kết nối MongoDB sử dụng database.ts
+    
     await connectDatabase({ autoIndex: config.nodeEnv !== 'production' });
     appLogger.info('Server connected to MongoDB', { uri: config.mongodbUri });
 
-    // Khởi động server Express
+    
     const server = app.listen(config.port, () => {
       appLogger.info(`Server running on port ${config.port}`, { env: config.nodeEnv });
     });
 
-    // Xử lý lỗi server
+   
     server.on('error', (error: NodeJS.ErrnoException) => {
       appLogger.error('Server error', { error: error.message });
       process.exit(1);

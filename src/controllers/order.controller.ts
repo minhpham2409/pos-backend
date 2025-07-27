@@ -4,12 +4,6 @@ import { appLogger } from '../utils/logger';
 import { STATUS_CODES } from '../utils/constants';
 import { AuthRequest, OrderRequestDto } from '../types';
 
-/**
- * Xử lý yêu cầu tạo đơn hàng mới
- * @param req - Request chứa dữ liệu đơn hàng
- * @param res - Response trả về đơn hàng vừa tạo
- * @param next - Chuyển lỗi đến middleware errorHandler
- */
 export async function createOrderController(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const orderData: OrderRequestDto = req.body;
@@ -32,12 +26,7 @@ export async function createOrderController(req: AuthRequest, res: Response, nex
   }
 }
 
-/**
- * Xử lý yêu cầu lấy danh sách đơn hàng
- * @param req - Request chứa query params (page, limit, userId)
- * @param res - Response trả về danh sách đơn hàng
- * @param next - Chuyển lỗi đến middleware errorHandler
- */
+
 export async function getOrdersController(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const { page = '1', limit = '10', userId } = req.query;
@@ -62,12 +51,6 @@ export async function getOrdersController(req: AuthRequest, res: Response, next:
 }
 
 
-/**
- * Xử lý yêu cầu lấy chi tiết đơn hàng theo ID
- * @param req - Request chứa orderId trong params
- * @param res - Response trả về chi tiết đơn hàng
- * @param next - Chuyển lỗi đến middleware errorHandler
- */
 export async function getOrderByIdController(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const orderId = req.params.id;

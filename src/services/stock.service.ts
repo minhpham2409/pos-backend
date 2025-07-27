@@ -4,12 +4,6 @@ import { appLogger } from '../utils/logger';
 import { STATUS_CODES, MESSAGES } from '../utils/constants';
 import { StockMovementRequestDto } from '../types';
 
-/**
- * Nhập kho sản phẩm (admin only)
- * @param stockData - Dữ liệu nhập kho (productId, qty, note)
- * @param userId - ID của user thực hiện
- * @returns Lịch sử nhập kho
- */
 export async function importStock(stockData: StockMovementRequestDto, userId: string) {
   const { productId, qty, note } = stockData;
 
@@ -42,12 +36,6 @@ export async function importStock(stockData: StockMovementRequestDto, userId: st
   return stockMovement;
 }
 
-/**
- * Xuất kho sản phẩm (admin only)
- * @param stockData - Dữ liệu xuất kho (productId, qty, note)
- * @param userId - ID của user thực hiện
- * @returns Lịch sử xuất kho
- */
 export async function exportStock(stockData: StockMovementRequestDto, userId: string) {
   const { productId, qty, note } = stockData;
 
@@ -89,21 +77,30 @@ export async function exportStock(stockData: StockMovementRequestDto, userId: st
   return stockMovement;
 }
 
-/**
- * Lấy danh sách lịch sử nhập/xuất kho với phân trang và lọc
- * @param page - Trang hiện tại
- * @param limit - Số lượng mỗi trang
- * @param productId - Lọc theo sản phẩm (tùy chọn)
- * @param type - Lọc theo loại ('import' hoặc 'export', tùy chọn)
- * @returns Danh sách lịch sử nhập/xuất kho
- */
-export async function getStockMovements(page: number = 1, limit: number = 10, productId?: string, type?: 'import' | 'export') {
+
+export async function getStockMovements(
+  page: number = 1,
+  limit: number = 10,
+  productId?: string,
+  type?: 'import' | 'export',
+  createdAt?: Date
+) {
   const query: any = {};
+
   if (productId) {
     query.productId = productId;
   }
   if (type) {
     query.type = type;
+  }
+  if (createdAt) {
+    const startOfDay = new Date(createdAt);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(createdAt);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    query.createdAt = { $gte: startOfDay, $lte: endOfDay };
   }
 
   const skip = (page - 1) * limit;
@@ -112,6 +109,6 @@ export async function getStockMovements(page: number = 1, limit: number = 10, pr
     StockMovement.countDocuments(query),
   ]);
 
-  appLogger.info('Stock movements retrieved successfully', { page, limit, total, productId, type });
+  appLogger.info('Stock movements retrieved successfully', { page, limit, total, productId, type, createdAt });
   return { movements, total, page, limit };
 }
