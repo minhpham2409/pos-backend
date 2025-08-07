@@ -12,4 +12,5 @@ router.post('/export', authMiddleware, roleMiddleware('admin'), validateStockMov
 
 router.get('/history', authMiddleware, roleMiddleware('admin'), getStockMovementsController);
 
+
 export const stockRouter = router;

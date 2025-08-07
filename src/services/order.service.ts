@@ -3,49 +3,51 @@ import  Order  from '../models/Order';
 import  StockMovement  from '../models/StockMovement';
 import { appLogger } from '../utils/logger';
 import { STATUS_CODES, MESSAGES } from '../utils/constants';
-import { OrderRequestDto } from '../types';
+import { IProduct, OrderRequestDto } from '../types';
+
 
 export async function createOrder(orderData: OrderRequestDto, userId: string) {
   const { items } = orderData;
-
-  // Kiểm tra sản phẩm tồn tại và đủ stock
-  const productIds = items.map(item => item.productId);
-  const products = await Product.find({ _id: { $in: productIds } });
-
-  if (products.length !== items.length) {
-    appLogger.warn('One or more products not found', { productIds, userId });
-    const error = new Error(MESSAGES.PRODUCT_NOT_FOUND);
-    error.name = 'NotFoundError';
-    (error as any).statusCode = STATUS_CODES.NOT_FOUND;
-    throw error;
-  }
-
-  // Kiểm tra stock và tính tổng tiền
   let total = 0;
+  const updatedProducts: IProduct[] = [];
+
+  // Kiểm tra và cập nhật stock bằng atomic update
   for (const item of items) {
-    const product = products.find(p => p._id.toString() === item.productId);
-    if (!product) {
-      appLogger.warn('Product not found for item', { productId: item.productId, userId });
-      const error = new Error(MESSAGES.PRODUCT_NOT_FOUND);
-      error.name = 'NotFoundError';
-      (error as any).statusCode = STATUS_CODES.NOT_FOUND;
-      throw error;
-    }
-    if (product.stock < item.qty) {
-      appLogger.warn('Insufficient stock for product', {
-        productId: item.productId,
-        stock: product.stock,
-        requestedQty: item.qty,
-        userId,
-      });
-      const error = new Error('Insufficient stock');
+    if (item.qty <= 0) {
+      appLogger.warn('Invalid quantity for item', { productId: item.productId, qty: item.qty, userId });
+      const error = new Error('Invalid quantity for item');
       error.name = 'BadRequestError';
       (error as any).statusCode = STATUS_CODES.BAD_REQUEST;
       throw error;
     }
-    total += item.qty * product.price;
-    item.name = product.name; // Lưu tên sản phẩm vào đơn hàng
-    item.price = product.price; // Lưu giá sản phẩm vào đơn hàng
+
+    // Dùng atomic update: giảm stock nếu còn đủ
+    const updatedProduct = await Product.findOneAndUpdate(
+      {
+        _id: item.productId,
+        stock: { $gte: item.qty } // điều kiện đủ hàng
+      },
+      {
+        $inc: { stock: -item.qty } // atomic giảm stock
+      },
+      {
+        new: true
+      }
+    );
+
+    if (!updatedProduct) {
+      appLogger.warn('Product not found or insufficient stock', { productId: item.productId, userId });
+      const error = new Error(MESSAGES.PRODUCT_NOT_FOUND_OR_OUT_OF_STOCK || 'Product not found or not enough stock');
+      error.name = 'NotFoundError';
+      (error as any).statusCode = STATUS_CODES.NOT_FOUND;
+      throw error;
+    }
+
+    // Lưu thông tin tên và giá vào order item
+    item.name = updatedProduct.name;
+    item.price = updatedProduct.price;
+    total += item.qty * updatedProduct.price;
+    updatedProducts.push(updatedProduct);
   }
 
   // Tạo đơn hàng
@@ -56,10 +58,8 @@ export async function createOrder(orderData: OrderRequestDto, userId: string) {
     createdAt: new Date(),
   });
 
-  // Tạo StockMovement và cập nhật stock
+  // Tạo stock movement
   const stockMovements = items.map(item => {
-    const product = products.find(p => p._id.toString() === item.productId)!;
-    product.stock -= item.qty; // Giảm stock
     return new StockMovement({
       type: 'export',
       productId: item.productId,
@@ -71,16 +71,16 @@ export async function createOrder(orderData: OrderRequestDto, userId: string) {
     });
   });
 
-  // Lưu đồng thời order, products, và stock movements
+  // Lưu order và stock movements
   await Promise.all([
     order.save(),
-    ...products.map(p => p.save()),
     ...stockMovements.map(sm => sm.save()),
   ]);
 
-  appLogger.info('Order created successfully', { orderId: order._id, userId });
+  appLogger.info('Order created with atomic stock update', { orderId: order._id, userId });
   return order;
 }
+
 
 export async function getOrders(page: number = 1, limit: number = 10, userId?: string) {
   const query: any = {};
@@ -102,7 +102,7 @@ export async function getOrders(page: number = 1, limit: number = 10, userId?: s
 export async function getOrderById(orderId: string, userId: string, role: string) {
   const query: any = { _id: orderId };
   if (role !== 'admin') {
-    query.createdBy = userId; // Cashier chỉ thấy đơn của mình
+    query.createdBy = userId; 
   }
 
   const order = await Order.findOne(query).lean();

@@ -35,5 +35,6 @@ export const MESSAGES = {
    NOT_FOUND: 'Resource not found',
    REGISTER_SUCCESS: 'Registration successful',
    ORDER_NOT_FOUND: 'Order not found',
+   PRODUCT_NOT_FOUND_OR_OUT_OF_STOCK: 'Product not found or out of stock',
 
 } as const;
